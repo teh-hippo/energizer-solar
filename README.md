@@ -7,6 +7,13 @@ Goal of this project is to provide a wrapper for the web API instead of the appl
 
 E.g., provide solar data in a Prometheus format.
 
+## Updates
+
+- [OpenAPI Dev Tools](https://chrome.google.com/webstore/detail/jelghndoknklgabjgaeppjhommkkmdii) will be useful to generate the API.
+- Found: [dmarjoram:Roses.SolarAPI](https://github.com/dmarjoram/Roses.SolarAPI/) through GH search.  Looks very similar & promising.
+
+
+
 ## Example
 
 ```bash
