@@ -1,11 +1,16 @@
-import { get } from 'https'
 import * as fs from 'fs'
 import * as path from 'path'
-import * as url from 'url'
+import * as http from 'http'
 import puppeteer from 'puppeteer'
+import type { Browser, Page } from 'puppeteer'
+import serveStatic from 'serve-static'
+import finalhandler from 'finalhandler'
+import type { AddressInfo } from 'net'
 
 const tempFolder: string = 'temp'
-const signatureFile: string = 'embedded-signature.htm'
+let server: http.Server | undefined
+let page: Page | undefined
+let browser: Browser | undefined
 
 async function init (): Promise<void> {
   // TODO: Cache & avoid downloading again.
@@ -17,39 +22,34 @@ async function init (): Promise<void> {
     'https://portal.energizersolar.com/js/signature.wasm',
     'signature.wasm'
   )
-  const fileName = copySignature()
-  const fileUri = url.pathToFileURL(fileName)
-  console.debug(`wrote to: ${fileUri.toString()}`)
-  await startPuppeteer(fileUri)
+  createSignature()
+  const port = startServer()
+  await startPuppeteer(port)
 }
 
-async function startPuppeteer (uri: URL): Promise<void> {
-  const browser = await puppeteer.launch({
+async function startPuppeteer (port: number): Promise<void> {
+  const address = `http://127.0.0.1:${port}`
+  browser = await puppeteer.launch({
     headless: false
     // args: ['--no-sandbox']
   })
-  const page = await browser.newPage()
+  page = await browser.newPage()
   await page.bringToFront()
-  await page.goto(uri.toString())
+  await page.goto(address)
   await page.waitForNetworkIdle()
   const uriPath = '/api/login'
   const token = ''
   const language = 'en'
   const timestamp = '12341283497'
   console.info(`Calculating signature: ${uriPath}, ${token}, ${language}, ${timestamp}`)
-  const result2 = await page.evaluate('1 + 2')
-  console.info(`Result2: ${result2 as number}`)
   const result = await page.evaluate(`
-    var stackSave = Module.cwrap("stackSave", "string", null);
     var sign = Module.cwrap("begin_signature", "string", ["string", "string", "string", "string"]);
     sign("${uriPath}", "${token}", "${language}", "${timestamp}");`)
   console.info(`Signature result: ${result as string}`)
-  await page.close()
-  await browser.close()
 }
 
-function copySignature (): string {
-  const destFileName = path.join(tempFolder, signatureFile)
+function createSignature (): void {
+  const destFileName = path.join(tempFolder, 'index.htm')
   if (fs.existsSync(destFileName)) {
     fs.rmSync(destFileName)
   }
@@ -68,7 +68,23 @@ function copySignature (): string {
       </script></body>
   </html>`)
   stream.close()
-  return destFileName
+}
+
+function startServer (): number {
+  const serve = serveStatic(tempFolder, { index: ['index.htm'] })
+  server = http.createServer(function onRequest (req, res) {
+    serve(req, res, finalhandler(req, res))
+  })
+  const addr = server.listen(0).address()
+  const port = (addr as AddressInfo)?.port
+  if (port === undefined) throw new Error('Unable to get a port')
+  return port
+}
+
+async function close (): Promise<void> {
+  server?.close()
+  await page?.close()
+  await browser?.close()
 }
 
 async function downloadTemp (
@@ -84,7 +100,7 @@ async function downloadTemp (
     return
   }
   await new Promise<void>((resolve, reject) => {
-    get(url, (response) => {
+    http.get(url, (response) => {
       const stream = fs.createWriteStream(destFileName)
       response.pipe(stream)
       stream
@@ -104,4 +120,4 @@ async function downloadTemp (
   })
 }
 
-export { init }
+export { init, close }
