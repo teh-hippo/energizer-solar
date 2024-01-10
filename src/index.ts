@@ -1,5 +1,5 @@
 import { init } from './signature';
 
-(async() => {
-    await init();
-})();
+(async () => {
+  await init()
+})().catch(e => { console.error(e) })

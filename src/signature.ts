@@ -1,30 +1,33 @@
-import { get } from "https";
-import * as fs from "fs";
-import * as path from "path";
+import { get } from 'https'
+import * as fs from 'fs'
+import * as path from 'path'
+import * as url from 'url'
 
-export { init };
+const tempFolder: string = 'temp'
+const signatureFile: string = 'embedded-signature.htm'
 
-const tempFolder: string = "temp";
-const signatureFile: string = "embedded-signature.htm";
-
-async function init() {
+async function init (): Promise<void> {
   // TODO: Cache & avoid downloading again.
   await downloadTemp(
-    "https://portal.energizersolar.com/js/signature.js",
-    "signature.js"
-  );
+    'https://portal.energizersolar.com/js/signature.js',
+    'signature.js'
+  )
   await downloadTemp(
-    "https://portal.energizersolar.com/js/signature.wasm",
-    "signature.wasm"
-  );
-  await copySignature();
+    'https://portal.energizersolar.com/js/signature.wasm',
+    'signature.wasm'
+  )
+  const fileName = copySignature()
+  const fileUri = url.pathToFileURL(fileName)
+  console.info(`wrote to: ${fileUri.toString()}`)
 }
 
-async function copySignature(): Promise<void> {
-  const destFileName = path.join(tempFolder, signatureFile);
-  const stream = fs.createWriteStream(destFileName);
-  await new Promise<void>((resolve, reject) => {
-    stream.write(`<!DOCTYPE html><!-- Credits to Roses.SolarAPI -->
+function copySignature (): string {
+  const destFileName = path.join(tempFolder, signatureFile)
+  if (fs.existsSync(destFileName)) {
+    fs.rmSync(destFileName)
+  }
+  const stream = fs.createWriteStream(destFileName)
+  stream.write(`<!DOCTYPE html><!-- Credits to Roses.SolarAPI -->
   <html lang=en>
       <head>
           <meta charset=utf-8>
@@ -36,38 +39,42 @@ async function copySignature(): Promise<void> {
       <script>
           console.log("Loaded script");
       </script></body>
-  </html>`);
-
-    stream
-      .on("finish", () => stream.close())
-      .on("close", () => resolve())
-      .on("error", (e) => reject(e.message));
-  });
+  </html>`)
+  stream.close()
+  return destFileName
 }
 
-async function downloadTemp(
+async function downloadTemp (
   url: string,
   fileName: string,
   force?: boolean
 ): Promise<void> {
   if (!fs.existsSync(tempFolder)) {
-    fs.mkdirSync(tempFolder);
+    fs.mkdirSync(tempFolder)
   }
-  const destFileName = path.join(tempFolder, fileName);
-  if (fs.existsSync(destFileName) && force != true) {
-    return;
+  const destFileName = path.join(tempFolder, fileName)
+  if (fs.existsSync(destFileName) && force !== true) {
+    return
   }
   await new Promise<void>((resolve, reject) => {
-    const _ = get(url, (response) => {
-      const stream = fs.createWriteStream(destFileName);
-      response.pipe(stream);
+    get(url, (response) => {
+      const stream = fs.createWriteStream(destFileName)
+      response.pipe(stream)
       stream
-        .on("finish", () => stream.close())
-        .on("close", () => resolve())
-        .on("error", (e) => reject(e.message));
-    }).on("error", (e) => {
-      console.error(e);
-      reject(e.message);
-    });
-  });
+        .on('finish', () => {
+          stream.close()
+        })
+        .on('close', () => {
+          resolve()
+        })
+        .on('error', (e) => {
+          reject(e.message)
+        })
+    }).on('error', (e) => {
+      console.error(e)
+      reject(e.message)
+    })
+  })
 }
+
+export { init }

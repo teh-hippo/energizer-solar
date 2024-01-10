@@ -3,13 +3,16 @@
         "module": "commonjs",
         "target": "es6",
         "noImplicitAny": true,
-        "outDir": "dist"
+        "outDir": "dist",
+        "esModuleInterop": true,
+        "strict": true,
+        "rootDir": "src"
     },
     "include": [
         "src/**/*"
     ],
     "exclude": [
-        "src/**/__tests__/*"
-    ],
-    "compileOnSave": true
+        "src/**/__tests__/*",
+        "node_modules"
+    ]
 }
