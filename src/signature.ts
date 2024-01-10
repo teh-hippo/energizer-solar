@@ -30,22 +30,22 @@ async function init (): Promise<void> {
 async function startPuppeteer (port: number): Promise<void> {
   const address = `http://127.0.0.1:${port}`
   browser = await puppeteer.launch({
-    headless: false
-    // args: ['--no-sandbox']
+    headless: true,
+    args: ['--no-sandbox']
   })
   page = await browser.newPage()
   await page.bringToFront()
   await page.goto(address)
   await page.waitForNetworkIdle()
-  const uriPath = '/api/login'
-  const token = ''
-  const language = 'en'
-  const timestamp = '12341283497'
+}
+
+async function calculateSignature (uriPath: string, token: string, language: string, timestamp: number): Promise<string> {
+  if (page === undefined) throw new Error('Uninitialised')
   console.info(`Calculating signature: ${uriPath}, ${token}, ${language}, ${timestamp}`)
   const result = await page.evaluate(`
     var sign = Module.cwrap("begin_signature", "string", ["string", "string", "string", "string"]);
     sign("${uriPath}", "${token}", "${language}", "${timestamp}");`)
-  console.info(`Signature result: ${result as string}`)
+  return result as string
 }
 
 function createSignature (): void {
@@ -120,4 +120,4 @@ async function downloadTemp (
   })
 }
 
-export { init, close }
+export { init, close, calculateSignature }
