@@ -23,7 +23,7 @@
             "args": [
                 "run",
                 "mocha",
-                "${relativeFile}"
+                "-r ts-node/register ${relativeFile}"
             ],
             "problemMatcher": []
         }
